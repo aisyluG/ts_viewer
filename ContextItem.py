@@ -18,8 +18,15 @@ class ContextItem(QObject):
     def add_message(self, message):
         self.message_items.append(message)
 
-    def insert_message(self, message, index):
+    def insert_message(self, index, message):
+        print(index)
         self.message_items.insert(index, message)
+
+    def findMessageInContext(self, source):
+        for m in self.message_items:
+            if m.get_source() == source:
+                return m
+        return None
 
 
 class MessageItem(QObject):
@@ -33,11 +40,11 @@ class MessageItem(QObject):
     def set_source(self, string):
         self.source = string
 
-    def set_ru_translation(self, string):
-        self.translation_ru = string
-
-    def set_en_translation(self, string):
-        self.translation_en = string
+    def set_translation(self, string, language):
+        if language.find('ru') != -1:
+            self.translation_ru = string
+        else:
+            self.translation_en = string
 
     def get_source(self):
         return self.source

@@ -18,7 +18,7 @@ class Window(QtWidgets.QMainWindow):
         # self.toolBar.addAction(load_rex_ru)
 
         # создаем и устанавливаем модель в представление контекстов
-        self.contexts_model = ContextsTableModel(file)
+        self.contexts_model = ContextsTableModel()
         self.ui.context_view.setModel(self.contexts_model)
         self.ui.context_view.setColumnWidth(1, 80)
 
@@ -35,7 +35,8 @@ class Window(QtWidgets.QMainWindow):
         self.ui.btSearchContext.clicked.connect(self.search_context)
         # поиск сообщения по строке
         self.ui.btSearchMessage.clicked.connect(self.search_message)
-
+        # загрузка данных
+        self.ui.btLoad.clicked.connect(self.load)
 
     def show_context_messages(self, index):
         self.ui.message_view.model().setContext(self.contexts_model.get_context(index))
@@ -49,6 +50,9 @@ class Window(QtWidgets.QMainWindow):
 
 
     def load(self):
+        filename, _ = QtWidgets.QFileDialog.getOpenFileName(self, 'Open file', '/rex.ts',
+                                                             'Файлы переводов (*.ts)')
+        self.ui.context_view.model().load_data(filename)
         return None
 
     def search_context(self):

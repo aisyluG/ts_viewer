@@ -5,9 +5,8 @@ from ContextItem import ContextItem, MessageItem
 
 class ContextsTableModel(QAbstractTableModel):
     contexts = []
-    def __init__(self, filename):
+    def __init__(self):
         QAbstractTableModel.__init__(self)
-        self.load_data(filename)
 
     # возвращаем число строк в данных в модели
     def rowCount(self, parent=QModelIndex()):
@@ -18,6 +17,14 @@ class ContextsTableModel(QAbstractTableModel):
 
     def get_context(self, index):
         return self.contexts[index.row()]
+
+    def setData(self, index, value, role=Qt.DisplayRole):
+        # если элемент не редактируем, то изменения не вносятся
+        if role != Qt.DisplayRole:
+            return False
+        self.contexts.insert(index.row(), value)
+        self.dataChanged.emit(index, index)
+        return True
 
     def data(self, index, role):
         column = index.column()
@@ -38,22 +45,57 @@ class ContextsTableModel(QAbstractTableModel):
             return QVariant()
 
     def load_data(self, filename):
-        # читаем файлы
+        # оповещаем об изменении модели
+        self.beginResetModel()
+        # читаем файл
         tree = ET.parse(filename)
         root = tree.getroot()
-        for c in root:
-            try:
-                name = c.find('name').text
-                context = ContextItem(name)
-                for m in c.findall('message'):
-                    source = m.find('source').text
-                    # translate = m.find('translation').text
-                    message = MessageItem(context)
-                    message.set_source(source)
-                    context.add_message(message)
-                self.contexts.append(context)
-            except AttributeError:
-                continue
+        # узнаем язык переводов
+        language = root.attrib['language']
+        # для каждого контекста в файле
+        for n, c in enumerate(root):
+            name = c.find('name')
+            # если контекст не имеет имя, то называем его 'no name'
+            if name is None:
+                context = ContextItem('no name')
+            # иначе ищем его  в модели
+            else:
+                context = self.findContextInModel(name.text)
+                # если контекста с таким именем нет в модели, то создаем новый контекст
+                if context is None:
+                    context = ContextItem(name.text)
+                # иначе дополняем новыми сообщениями, если они есть
+                else:
+                    print('*')
+                    for n, mes in enumerate(c.findall('message')):
+                        print('+')
+                        source = mes.find('source').text
+                        translation = mes.find('translation').text
+                        # ищем в контексте сообщением с теми же исходными данными
+                        message = context.findMessageInContext(source)
+                        # если нет, то создаем новое сообщение
+                        if message is None:
+                            print('/')
+                            message = MessageItem(context)
+                            message.set_source(source)
+                            # добавляем сообщение в контекст
+                            context.insert_message(n, message)
+                        # устанавливаем перевод
+                        message.set_translation(translation, language)
+                    continue
+            # если был создан новый контекст, то заполняем его сообщениями
+            for mes in c.findall('message'):
+                source = mes.find('source').text
+                translation = mes.find('translation').text
+                message = MessageItem(context)
+                message.set_source(source)
+                # устанавливаем перевод
+                message.set_translation(translation, language)
+
+                # добавляем сообщение в контекст
+                context.add_message(message)
+            self.setData(self.index(n, 0), context)
+        self.endResetModel()
 
     def index(self, row, column, parent=QModelIndex()):
         return self.createIndex(row, column)
@@ -74,6 +116,12 @@ class ContextsTableModel(QAbstractTableModel):
                 continue
             else:
                 return self.index(n, 0)
+        return None
+
+    def findContextInModel(self, name):
+        for c in self.contexts:
+            if c.get_name() == name:
+                return c
         return None
 
 class MessagesTableModel(QAbstractTableModel):
