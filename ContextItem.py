@@ -30,6 +30,8 @@ class ContextItem(QObject):
     def iterator(self):
         return iter(self.message_items)
 
+    def delete_message(self, index):
+        self.message_items.pop(index)
 
 
 class MessageItem(QObject):
