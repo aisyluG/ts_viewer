@@ -1,5 +1,5 @@
 from PyQt5 import QtWidgets, QtGui, QtCore
-from viewer_window_1 import Ui_MainWindow
+from viewer_window_2 import Ui_MainWindow
 import sys
 from ContextsTableModel import ContextsTableModel
 from MessagesTableModel import MessagesTableModel
@@ -22,6 +22,8 @@ class Window(QtWidgets.QMainWindow):
         self.contexts_model = ContextsTableModel()
         self.ui.context_view.setModel(self.contexts_model)
         self.ui.context_view.setColumnWidth(1, 80)
+        self.ui.context_view.setEditTriggers(QtWidgets.QTableView.NoEditTriggers)
+        self.hidden_contexts = []
     #     self.ui.context_view.horizontalHeader().setStyleSheet('background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,\
     #                             stop: 0 #E1E1E1, stop: 0.4 #DDDDDD,\
     #                             stop: 0.5 #D8D8D8, stop: 1.0 #D3D3D3);\
@@ -35,6 +37,7 @@ class Window(QtWidgets.QMainWindow):
         # создаем и устанавливаем модель в представление сообщений
         self.messages_model = MessagesTableModel()
         self.ui.message_view.setModel(self.messages_model)
+        self.hidden_messages = []
         self.ui.message_view.horizontalHeader().setStyleSheet('border: 2px solid white; border-top-left-radius: 8px;\
     border-top-right-radius: 8px;')# padding: 2px;')
     #     palette = self.ui.message_view.palette()
@@ -42,16 +45,20 @@ class Window(QtWidgets.QMainWindow):
     #     self.ui.message_view.setPalette(palette)
 
         # настройка контексного меню для таблицы контекстов
-        insert_context = QtWidgets.QAction('Вставить', self)
+        insert_context = QtWidgets.QAction('Вставить новый контекст', self)
         insert_context.triggered.connect(self.insert_context)
         delete_context = QtWidgets.QAction('Удалить', self)
         delete_context.triggered.connect(self.delete_context)
+        rename_context = QtWidgets.QAction('Переименовать', self)
+        rename_context.triggered.connect(self.rename_context)
         self.menu_for_context_view = QtWidgets.QMenu(self)
         self.menu_for_context_view.addAction(insert_context)
         self.menu_for_context_view.addAction(delete_context)
+        self.menu_for_context_view.addAction(rename_context)
+
 
         # настройка контексного меню для таблицы сообщений
-        insert_message = QtWidgets.QAction('Вставить',  self)
+        insert_message = QtWidgets.QAction('Вставить новое сообщение',  self)
         insert_message.triggered.connect(self.insert_message)
         delete_message = QtWidgets.QAction('Удалить', self)
         delete_message.triggered.connect(self.delete_message)
@@ -92,6 +99,15 @@ class Window(QtWidgets.QMainWindow):
         # появление контексного меню при нажатии на правую кнопку мыши
         self.ui.context_view.mouse_pressed.connect(self.show_context_menu)
         self.ui.message_view.mouse_pressed.connect(self.show_context_menu)
+        # показать скрытые контексты
+        self.ui.showAllContexts_bt.clicked.connect(self.showAllContexts)
+        # показать скрытые сообщения
+        self.ui.showAllMessages_bt.clicked.connect(self.showAllMessages)
+
+    # переименовывание контекста
+    def rename_context(self):
+        index = self.ui.context_view.currentIndex()
+        self.ui.context_view.edit(index)
 
     # вставка нового элемента context в модель по индексу
     def insert_context(self):
@@ -192,8 +208,8 @@ class Window(QtWidgets.QMainWindow):
 
     # показ сообщений выбранного контекста
     def show_context_messages(self, index):
-        self.ui.message_view.model().setContext(self.contexts_model.get_context(index))
-        # self.ui.message_view.data
+        self.ui.message_view.model().setContext(self.ui.context_view.model().get_context(index))
+        self.showAllMessages()
         self.ui.message_view.resizeRowsToContents()
 
     # показ исходного текста и переводов выбранного сообщения
@@ -223,26 +239,28 @@ class Window(QtWidgets.QMainWindow):
         except Exception:
             self.ui.statusbar.showMessage('Ошибка сохранения.')
 
-    # поиск контекста по названию
+    # поиск контекстов по названию
     def search_context(self):
         line = self.ui.context_searchLine.text()
-        context_index = self.ui.context_view.model().search_context(line)
-        if context_index is not None:
-            self.ui.context_view.setCurrentIndex(context_index)
-            self.ui.context_view.setFocus()
-            self.ui.statusbar.showMessage('')
+        found_contexts = self.ui.context_view.model().contexts_to_hide(line)
+        if found_contexts != []:
+            self.found_contexts_model = ContextsTableModel()
+            for n in found_contexts:
+                self.ui.context_view.hideRow(n)
+            self.hidden_contexts = found_contexts
+            self.ui.statusbar.showMessage('Найдено {0} элементов.'.format(self.ui.context_view.model().rowCount() - len(found_contexts)))
         else:
             self.ui.statusbar.showMessage('Ничего не найдено.')
 
-    # поиск контекста по исходному тексту
+    # поиск контекстов по исходному тексту
     def search_message(self):
         line = self.ui.message_searchLine.text()
-        print(line)
-        message_index = self.ui.message_view.model().search_message(line)
-        if message_index is not None:
-            self.ui.message_view.setCurrentIndex(message_index)
-            self.ui.message_view.setFocus()
-            self.ui.statusbar.showMessage('')
+        if self.ui.message_view.model().isContextSetted() == True:
+            found_messages = self.ui.message_view.model().messages_to_hide(line)
+            for n in found_messages:
+                self.ui.message_view.hideRow(n)
+            self.hidden_messages = found_messages
+            self.ui.statusbar.showMessage('Найдено {0} элементов.'.format(self.ui.message_view.model().rowCount() - len(found_messages)))
         else:
             self.ui.statusbar.showMessage('Ничего не найдено.')
 
@@ -269,6 +287,16 @@ class Window(QtWidgets.QMainWindow):
                 self.search_context()
             if self.centralWidget().focusWidget() is self.ui.message_searchLine:
                 self.search_message()
+
+    # показываются скрытые контексты
+    def showAllContexts(self):
+        for n in self.hidden_contexts:
+            self.ui.context_view.setRowHidden(n, False)
+
+    # показываются скрытые сообщения
+    def showAllMessages(self):
+        for n in self.hidden_messages:
+            self.ui.message_view.setRowHidden(n, False)
 
 
 if __name__ == '__main__':

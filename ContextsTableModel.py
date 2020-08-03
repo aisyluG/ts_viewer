@@ -22,9 +22,9 @@ class ContextsTableModel(QAbstractTableModel):
 
     def setData(self, index, value, role=Qt.DisplayRole):
         # если элемент не редактируем, то изменения не вносятся
-        if role != Qt.DisplayRole:
+        if role != Qt.EditRole:
             return False
-        self.contexts.insert(index.row(), value)
+        self.contexts[index.row()].rename(value)
         self.dataChanged.emit(index, index)
         return True
 
@@ -96,7 +96,7 @@ class ContextsTableModel(QAbstractTableModel):
 
                 # добавляем сообщение в контекст
                 context.add_message(message)
-            self.setData(self.index(n, 0), context)
+            self.contexts.insert(n, context)
         self.endResetModel()
 
     def index(self, row, column, parent=QModelIndex()):
@@ -110,13 +110,12 @@ class ContextsTableModel(QAbstractTableModel):
                 return 'Записи'
         return QVariant()
 
-    def search_context(self, string):
+    def contexts_to_hide(self, string):
+        hide = []
         for n, context in enumerate(self.contexts):
             if context.get_name().lower().find(string.lower()) == -1:
-                continue
-            else:
-                return self.index(n, 0)
-        return None
+                hide.append(n)
+        return hide
 
     def findContextInModel(self, name):
         for c in self.contexts:
@@ -126,14 +125,14 @@ class ContextsTableModel(QAbstractTableModel):
 
     def add_context(self, name):
         count = len(self.contexts)
-        self.beginInsertRows(QModelIndex(), count, count + 1)
+        self.beginInsertRows(QModelIndex(), count, count)
         index = self.index(count, 0)
-        self.setData(index, ContextItem(name))
+        self.contexts.append(ContextItem(name))
         self.endInsertRows()
 
     def insert_context(self, name, row):
-        self.beginInsertRows(QModelIndex(), row, row + 1)
-        self.setData(self.index(row, 0), ContextItem(name))
+        self.beginInsertRows(QModelIndex(), row, row)
+        self.contexts.insert(row, ContextItem(name))
         self.endInsertRows()
 
     def delete_context(self, row):
@@ -161,5 +160,14 @@ class ContextsTableModel(QAbstractTableModel):
                 file.write('</context>\n')
             file.write('</TS>\n')
 
+
+    #метод, возвращающийкомбинацию флагов, соответствующую каждому элементу
+    def flags(self, index):
+        column = index.column()
+        #если элемент в столбце с пересчитываемыми значениями, то он нередактируем
+        if column == 1:
+            return Qt.ItemIsEnabled | Qt.ItemIsSelectable
+        else:
+            return Qt.ItemIsEditable |Qt.ItemIsEnabled | Qt.ItemIsSelectable
 
 

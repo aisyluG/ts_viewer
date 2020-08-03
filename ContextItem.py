@@ -9,6 +9,9 @@ class ContextItem(QObject):
     def get_name(self):
         return self.contex_name
 
+    def rename(self, name):
+        self.contex_name = name
+
     def get_messages_count(self):
         return len(self.message_items)
 

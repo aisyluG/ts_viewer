@@ -67,13 +67,12 @@ class MessagesTableModel(QAbstractTableModel):
             return 'Cooбщение'
         return QVariant()
 
-    def search_message(self, string):
+    def messages_to_hide(self, string):
+        hide = []
         for n, message in enumerate(self.context.iterator()):
             if message.get_source().lower().find(string.lower()) == -1:
-                continue
-            else:
-                return self.index(n, 0)
-        return None
+                hide.append(n)
+        return hide
 
     def set_message_translation(self, language, index, translation):
         self.context.get_message(index.row()).set_translation(translation, language)
@@ -84,7 +83,7 @@ class MessagesTableModel(QAbstractTableModel):
 
     def add_message(self, source):
         count = self.get_messages_count()
-        self.beginInsertRows(QModelIndex(), count, count + 1)
+        self.beginInsertRows(QModelIndex(), count, count)
         index = self.index(count, 0)
         message = MessageItem(self.context)
         message.set_source(source)
@@ -92,7 +91,7 @@ class MessagesTableModel(QAbstractTableModel):
         self.endInsertRows()
 
     def insert_message(self, source, index):
-        self.beginInsertRows(QModelIndex(), index, index + 1)
+        self.beginInsertRows(QModelIndex(), index, index)
         message = MessageItem(self.context)
         message.set_source(source)
         self.setData(self.index(index, 0), message)
