@@ -1,8 +1,9 @@
 from PyQt5 import QtWidgets, QtGui, QtCore
-from viewer_window_2 import Ui_MainWindow
+from viewer_window_1 import Ui_MainWindow
 import sys
 from ContextsTableModel import ContextsTableModel
 from MessagesTableModel import MessagesTableModel
+from ContextItem import ContextItem
 
 file = 'D:/ucheba/python/grid/translate/en1.ts'
 
@@ -37,6 +38,7 @@ class Window(QtWidgets.QMainWindow):
         # создаем и устанавливаем модель в представление сообщений
         self.messages_model = MessagesTableModel()
         self.ui.message_view.setModel(self.messages_model)
+        self.ui.message_view.setEditTriggers(QtWidgets.QTableView.NoEditTriggers)
         self.hidden_messages = []
         self.ui.message_view.horizontalHeader().setStyleSheet('border: 2px solid white; border-top-left-radius: 8px;\
     border-top-right-radius: 8px;')# padding: 2px;')
@@ -45,10 +47,13 @@ class Window(QtWidgets.QMainWindow):
     #     self.ui.message_view.setPalette(palette)
 
         # настройка контексного меню для таблицы контекстов
+        # вставить контекст
         insert_context = QtWidgets.QAction('Вставить новый контекст', self)
         insert_context.triggered.connect(self.insert_context)
+        # удалить контекст
         delete_context = QtWidgets.QAction('Удалить', self)
         delete_context.triggered.connect(self.delete_context)
+        # переименовать контекст
         rename_context = QtWidgets.QAction('Переименовать', self)
         rename_context.triggered.connect(self.rename_context)
         self.menu_for_context_view = QtWidgets.QMenu(self)
@@ -58,13 +63,19 @@ class Window(QtWidgets.QMainWindow):
 
 
         # настройка контексного меню для таблицы сообщений
+        # вставить сообщение
         insert_message = QtWidgets.QAction('Вставить новое сообщение',  self)
         insert_message.triggered.connect(self.insert_message)
+        # удалить сообщение
         delete_message = QtWidgets.QAction('Удалить', self)
         delete_message.triggered.connect(self.delete_message)
+        # переименовать сообщение
+        rename_message = QtWidgets.QAction('Изменить исходный текст', self)
+        rename_message.triggered.connect(self.rename_message)
         self.menu_for_message_view = QtWidgets.QMenu(self)
         self.menu_for_message_view.addAction(insert_message)
         self.menu_for_message_view.addAction(delete_message)
+        self.menu_for_message_view.addAction(rename_message)
 
 
         # связываем слоты и сигналы
@@ -72,6 +83,8 @@ class Window(QtWidgets.QMainWindow):
         self.ui.context_view.doubleClicked.connect(lambda x: self.show_context_messages(x))
         # двойное нажатие на сообщение открывает переводы
         self.ui.message_view.doubleClicked.connect(lambda x: self.show_message(x))
+        # показ контекста соответсвующего выбранному сообщению
+        self.ui.message_view.clicked.connect(lambda x: self.choose_context(x))
         # поиск контекста по строке
         self.ui.btSearchContext.clicked.connect(self.search_context)
         # поиск сообщения по строке
@@ -103,17 +116,51 @@ class Window(QtWidgets.QMainWindow):
         self.ui.showAllContexts_bt.clicked.connect(self.showAllContexts)
         # показать скрытые сообщения
         self.ui.showAllMessages_bt.clicked.connect(self.showAllMessages)
+        # очистить представление сообщений
+        self.ui.cleanMessageView_bt.clicked.connect(self.cleanMessageView)
+        # очистить представление контекстов
+        self.ui.cleanContextView_bt.clicked.connect(self.cleanContextView)
+
+    # очистить представление сообщение
+    def cleanContextView(self):
+        messageBox = QtWidgets.QMessageBox()
+        messageBox.setText('Вы уверены, что хотите удалить все контексты?')
+        messageBox.setWindowTitle('Удаление')
+        messageBox.setStandardButtons(QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel)
+        messageBox.setIcon(QtWidgets.QMessageBox.Warning)
+        answer = messageBox.exec()
+        if answer == QtWidgets.QMessageBox.Ok:
+            self.ui.context_view.model().clean_model()
+
+    # очистить представление сообщений
+    def cleanMessageView(self):
+        self.ui.message_view.model().setContext(None)
+
+    # выбираем контекст соответсвующий выбранному контексту
+    def choose_context(self, index):
+        self.showAllContexts()
+        name = self.ui.message_view.model().get_message(index).get_parent().get_name()
+        for n in range(0, self.ui.context_view.model().rowCount()):
+            if self.ui.context_view.model().get_context(n).get_name() != name:
+                self.ui.context_view.hideRow(n)
+                self.hidden_contexts.append(n)
+        self.ui.statusbar.showMessage('Context: {0}'.format(name))
 
     # переименовывание контекста
     def rename_context(self):
         index = self.ui.context_view.currentIndex()
         self.ui.context_view.edit(index)
 
+    # переименовывание контекста
+    def rename_message(self):
+        index = self.ui.message_view.currentIndex()
+        self.ui.message_view.edit(index)
+
     # вставка нового элемента context в модель по индексу
     def insert_context(self):
         index = self.ui.context_view.currentIndex().row()
         name, _ = QtWidgets.QInputDialog.getText(self, 'Новый контекст', 'Введите название нового контекста')
-        if _ == True:
+        if _ == True and name != '':
             self.ui.context_view.model().insert_context(name, index + 1)
             self.ui.statusbar.showMessage('Контекст успешно добавлен.')
 
@@ -121,7 +168,7 @@ class Window(QtWidgets.QMainWindow):
     def insert_message(self):
         index = self.ui.message_view.currentIndex().row()
         name, _ = QtWidgets.QInputDialog.getText(self, 'Новое сообщение', 'Введите исходный текст нового сообщения')
-        if _ == True:
+        if _ == True and name != '':
             if self.ui.message_view.model().isContextSetted() == True:
                 self.ui.message_view.model().insert_message(name, index + 1)
                 self.ui.statusbar.showMessage('Сообщение успешно добавлено.')
@@ -139,7 +186,6 @@ class Window(QtWidgets.QMainWindow):
         messageBox.setIcon(QtWidgets.QMessageBox.Warning)
         answer = messageBox.exec()
         if answer == QtWidgets.QMessageBox.Ok:
-            print('yes')
             self.ui.context_view.model().delete_context(row)
 
     # удаление элемента message по индексу
@@ -158,7 +204,7 @@ class Window(QtWidgets.QMainWindow):
     # удаление элемента context по имени
     def delete_context_by_name(self):
         name, _ = QtWidgets.QInputDialog.getText(self, 'Удаление элемента context', 'Введите название контекста')
-        if _== True:
+        if _== True and name != '':
             index = self.ui.context_view.model().search_context(name)
             self.ui.context_view.setCurrentIndex(index)
             self.delete_context()
@@ -166,7 +212,7 @@ class Window(QtWidgets.QMainWindow):
     # удаление элемента message по исходному тексту
     def delete_message_by_name(self):
         name, _ = QtWidgets.QInputDialog.getText(self, 'Удаление элемента message', 'Введите название сообщения')
-        if _ == True:
+        if _ == True and name != '':
             index = self.ui.message_view.model().search_message(name)
             self.ui.message_view.setCurrentIndex(index)
             self.delete_message()
@@ -208,13 +254,15 @@ class Window(QtWidgets.QMainWindow):
 
     # показ сообщений выбранного контекста
     def show_context_messages(self, index):
-        self.ui.message_view.model().setContext(self.ui.context_view.model().get_context(index))
+        context = self.ui.context_view.model().get_context(index.row())
+        self.ui.message_view.model().setContext(context)
+        self.ui.statusbar.showMessage('Выбран контекст "{0}"'.format(context.get_name()))
         self.showAllMessages()
         self.ui.message_view.resizeRowsToContents()
 
     # показ исходного текста и переводов выбранного сообщения
     def show_message(self, index):
-        ru, en = self.ui.message_view.model().get_message_translations(index)
+        ru, en = self.ui.message_view.model().get_message(index).get_translations()
         self.ui.sourceText.setText(self.ui.message_view.model().data(index))
         self.ui.ru_transText.setText(ru)
         self.ui.en_transText.setText(en)
@@ -226,6 +274,7 @@ class Window(QtWidgets.QMainWindow):
                                                                  'Файлы переводов (*.ts)')
             self.ui.context_view.model().load_data(filename)
             self.ui.statusbar.showMessage('Загружено из файла:' + filename)
+            self.showAllContexts()
         except Exception:
             self.ui.statusbar.showMessage('Ошибка заргузки.')
 
@@ -240,9 +289,11 @@ class Window(QtWidgets.QMainWindow):
             self.ui.statusbar.showMessage('Ошибка сохранения.')
 
     # поиск контекстов по названию
-    def search_context(self):
-        line = self.ui.context_searchLine.text()
-        found_contexts = self.ui.context_view.model().contexts_to_hide(line)
+    def search_context(self, string=None):
+        self.showAllContexts()
+        if string is None:
+            string = self.ui.context_searchLine.text()
+        found_contexts = self.ui.context_view.model().contexts_to_hide(string)
         if found_contexts != []:
             self.found_contexts_model = ContextsTableModel()
             for n in found_contexts:
@@ -255,26 +306,38 @@ class Window(QtWidgets.QMainWindow):
     # поиск контекстов по исходному тексту
     def search_message(self):
         line = self.ui.message_searchLine.text()
-        if self.ui.message_view.model().isContextSetted() == True:
-            found_messages = self.ui.message_view.model().messages_to_hide(line)
-            for n in found_messages:
-                self.ui.message_view.hideRow(n)
-            self.hidden_messages = found_messages
-            self.ui.statusbar.showMessage('Найдено {0} элементов.'.format(self.ui.message_view.model().rowCount() - len(found_messages)))
+        if line == '':
+            return False
+        if self.ui.search_in_currContext_chB.isChecked() == True:
+            if self.ui.message_view.model().isContextSetted() == True:
+                found_messages = self.ui.message_view.model().messages_to_hide(line)
+                for n in found_messages:
+                    self.ui.message_view.hideRow(n)
+                self.hidden_messages = found_messages
+                self.ui.statusbar.showMessage('Поиск в {0}. Найдено {1} элементов.'.format(self.ui.message_view.model().get_context_name(),
+                    self.ui.message_view.model().rowCount() - len(found_messages)))
+            else:
+                self.ui.statusbar.showMessage('Контекст не выбран!')
         else:
-            self.ui.statusbar.showMessage('Ничего не найдено.')
+            found = list(filter(lambda x: x != [], self.ui.context_view.model().search_messages(line)))
+            f = []
+            [f.extend(x) for x in found if x!=[]]
+            context = ContextItem('Найдено', f)
+            self.ui.message_view.model().setContext(context)
+            self.ui.statusbar.showMessage('Найдено {0} элементов'.format(len(f)))
+        return True
 
     # добавление нового контекста в конец
     def add_context(self):
         name, _ = QtWidgets.QInputDialog.getText(self, 'Новый контекст', 'Введите название нового контекста')
-        if _ == True:
+        if _ == True and name != '':
             self.ui.context_view.model().add_context(name)
             self.ui.statusbar.showMessage('Контекст добавлен.')
 
     # добавление нового сообщения в конец
     def add_message(self):
         name, _ = QtWidgets.QInputDialog.getText(self, 'Новое сообщение', 'Введите исходный текст нового сообщения')
-        if _ == True:
+        if _ == True and name != '':
             if self.ui.message_view.model().isContextSetted() == True:
                 self.ui.message_view.model().add_message(name)
                 self.ui.statusbar.showMessage('Сообщение добавлено.')
@@ -287,16 +350,22 @@ class Window(QtWidgets.QMainWindow):
                 self.search_context()
             if self.centralWidget().focusWidget() is self.ui.message_searchLine:
                 self.search_message()
+        elif e.key() == QtCore.Qt.Key_Save:
+            self.save()
+        elif e.key() == QtCore.Qt.Key_Open:
+            self.load()
 
     # показываются скрытые контексты
     def showAllContexts(self):
         for n in self.hidden_contexts:
             self.ui.context_view.setRowHidden(n, False)
+        self.hidden_contexts = []
 
     # показываются скрытые сообщения
     def showAllMessages(self):
         for n in self.hidden_messages:
             self.ui.message_view.setRowHidden(n, False)
+        self.hidden_messages = []
 
 
 if __name__ == '__main__':

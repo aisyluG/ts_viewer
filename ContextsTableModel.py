@@ -17,8 +17,14 @@ class ContextsTableModel(QAbstractTableModel):
     def columnCount(self, parent=QModelIndex()):
         return 2
 
-    def get_context(self, index):
-        return self.contexts[index.row()]
+    def get_context(self, row):
+        return self.contexts[row]
+
+    def get_context_by_name(self, name):
+        for c in self.contexts:
+            if c.get_name() == name:
+                return c
+        return None
 
     def setData(self, index, value, role=Qt.DisplayRole):
         # если элемент не редактируем, то изменения не вносятся
@@ -58,6 +64,7 @@ class ContextsTableModel(QAbstractTableModel):
         language = root.attrib['language']
         self.version = root.attrib['version']
         # для каждого контекста в файле
+        shift = 0
         for n, c in enumerate(root):
             name = c.find('name')
             # если контекст не имеет имя, то называем его 'no name'
@@ -65,16 +72,17 @@ class ContextsTableModel(QAbstractTableModel):
                 context = ContextItem('no name')
             # иначе ищем его  в модели
             else:
-                context = self.findContextInModel(name.text)
+                context = self.get_context_by_name(name.text)
                 # если контекста с таким именем нет в модели, то создаем новый контекст
                 if context is None:
                     context = ContextItem(name.text)
                 # иначе дополняем новыми сообщениями, если они есть
                 else:
+                    shift = shift + 1
                     for n, mes in enumerate(c.findall('message')):
                         source = mes.find('source').text
                         translation = mes.find('translation').text
-                        # ищем в контексте сообщением с теми же исходными данными
+                        # ищем в контексте сообщение с теми же исходными данными
                         message = context.findMessageInContext(source)
                         # если нет, то создаем новое сообщение
                         if message is None:
@@ -93,10 +101,9 @@ class ContextsTableModel(QAbstractTableModel):
                 message.set_source(source)
                 # устанавливаем перевод
                 message.set_translation(translation, language)
-
                 # добавляем сообщение в контекст
                 context.add_message(message)
-            self.contexts.insert(n, context)
+            self.contexts.insert(n + shift, context)
         self.endResetModel()
 
     def index(self, row, column, parent=QModelIndex()):
@@ -110,18 +117,13 @@ class ContextsTableModel(QAbstractTableModel):
                 return 'Записи'
         return QVariant()
 
+    # возвращается список контекстов, в которых нет заданной подстроки
     def contexts_to_hide(self, string):
         hide = []
         for n, context in enumerate(self.contexts):
             if context.get_name().lower().find(string.lower()) == -1:
                 hide.append(n)
         return hide
-
-    def findContextInModel(self, name):
-        for c in self.contexts:
-            if c.get_name() == name:
-                return c
-        return None
 
     def add_context(self, name):
         count = len(self.contexts)
@@ -140,6 +142,13 @@ class ContextsTableModel(QAbstractTableModel):
         self.contexts.pop(row)
         self.endRemoveRows()
 
+    def clean_model(self):
+        self.beginResetModel()
+        self.contexts = []
+        self.endResetModel()
+
+    def search_messages(self, string):
+        return list(map(lambda x: x.search_messages(string), self.contexts))
 
     def save_data(self, filename, language):
         if language.find('ru') == -1:
@@ -159,7 +168,6 @@ class ContextsTableModel(QAbstractTableModel):
                     file.write('{0}</message>\n'.format(' '*4))
                 file.write('</context>\n')
             file.write('</TS>\n')
-
 
     #метод, возвращающийкомбинацию флагов, соответствующую каждому элементу
     def flags(self, index):

@@ -12,9 +12,12 @@ class MessagesTableModel(QAbstractTableModel):
             return False
         return True
 
-    def get_message_translations(self, index):
+    def get_context_name(self):
+        return self.context.get_name()
+
+    def get_message(self, index):
         row = index.row()
-        return self.context.get_message(row).get_translations()
+        return self.context.get_message(row)
 
     def get_messages_count(self):
         if self.context is None:
@@ -24,16 +27,13 @@ class MessagesTableModel(QAbstractTableModel):
     def setContext(self, context):
         self.beginResetModel()
         self.context = context
-        # for i in range(0, context.get_messages_count()):
-        #     self.setData(self.index(i, 0), context.get_message(i))
         self.endResetModel()
-        # self.messages = [context.get_message(i) for i in range(0, self.messages_count)]
 
     def setData(self, index, data, role=Qt.DisplayRole):
         # если элемент не редактируем, то изменения не вносятся
-        if role != Qt.DisplayRole:
+        if role != Qt.EditRole:
             return False
-        self.context.insert_message(index.row(), data)
+        self.context.get_message(index.row()).set_source(data)
         self.dataChanged.emit(index, index)
         return True
 
@@ -70,7 +70,7 @@ class MessagesTableModel(QAbstractTableModel):
     def messages_to_hide(self, string):
         hide = []
         for n, message in enumerate(self.context.iterator()):
-            if message.get_source().lower().find(string.lower()) == -1:
+            if message.find(string) == False:
                 hide.append(n)
         return hide
 
@@ -87,17 +87,22 @@ class MessagesTableModel(QAbstractTableModel):
         index = self.index(count, 0)
         message = MessageItem(self.context)
         message.set_source(source)
-        self.setData(index, message)
+        self.context.add_message(message)
         self.endInsertRows()
 
     def insert_message(self, source, index):
         self.beginInsertRows(QModelIndex(), index, index)
         message = MessageItem(self.context)
         message.set_source(source)
-        self.setData(self.index(index, 0), message)
+        self.context.insert(index, message)
         self.endInsertRows()
 
     def delete_message(self, row):
         self.beginRemoveRows(QModelIndex(), row, row)
         self.context.delete_message(row)
         self.endRemoveRows()
+
+    # метод, возвращающийкомбинацию флагов, соответствующую каждому элементу
+    def flags(self, index):
+        # если элемент в столбце с пересчитываемыми значениями, то он нередактируем
+        return Qt.ItemIsEditable | Qt.ItemIsEnabled | Qt.ItemIsSelectable
