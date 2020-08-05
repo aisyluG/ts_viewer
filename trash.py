@@ -1,1 +1,0 @@
-print("СT settings".lower().find('сt'))

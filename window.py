@@ -392,8 +392,6 @@ class Window(QtWidgets.QMainWindow):
         self.hidden_messages = []
 
     def resizeEvent(self, a0: QtGui.QResizeEvent):
-        print(a0.size())
-        print(a0.oldSize())
         if a0.oldSize() != QtCore.QSize(-1,-1):
             width = a0.size().width() - a0.oldSize().width()
             height = a0.size().height() - a0.oldSize().height()
