@@ -281,10 +281,32 @@ class Window(QtWidgets.QMainWindow):
     # сохранение переводов в файл
     def save(self):
         try:
-            filename, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Сохранить', '/rex.ts',
-                                                                'Файлы переводов (*.ts)')
-            self.ui.context_view.model().save_data(filename, 'ru')
-            self.ui.statusbar.showMessage('Сохранено в файл:' + filename)
+            # filename, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Сохранить', '/rex.ts',
+            #                                                     'Файлы переводов (*.ts)')
+
+            language, _ = QtWidgets.QInputDialog.getItem(self, 'Сохранение', 'Выберите сохраняемый язык:',
+                                                  ['Русский', 'Английский', 'Оба языка'])
+            if _ == True:
+                if language == 'Оба языка':
+                    filename, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Файл для сохранения английской версии', '/rex.ts',
+                                                                     'Файл (*.ts)')
+                    if _ == True:
+                         self.ui.context_view.model().save_data(filename, 'en')
+                    filename, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Файл для сохранения русской версии',
+                                                                        '/rex.ts', 'Файл (*.ts)')
+                    if _== True:
+                        self.ui.context_view.model().save_data(filename, 'ru')
+                elif language == 'Русский':
+                    filename, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Файл для сохранения русской версии',
+                                                                        '/rex.ts', 'Файл (*.ts)')
+                    if _ == True:
+                        self.ui.context_view.model().save_data(filename, 'ru')
+                else:
+                    filename, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Файл для сохранения английской версии',
+                                                                        '/rex.ts',
+                                                                        'Файл (*.ts)')
+                    if _ == True:
+                        self.ui.context_view.model().save_data(filename, 'en')
         except Exception:
             self.ui.statusbar.showMessage('Ошибка сохранения.')
 
