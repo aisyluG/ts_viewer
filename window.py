@@ -24,6 +24,8 @@ class Window(QtWidgets.QMainWindow):
         self.ui.context_view.setModel(self.contexts_model)
         self.ui.context_view.setColumnWidth(1, 80)
         self.ui.context_view.setEditTriggers(QtWidgets.QTableView.NoEditTriggers)
+        self.ui.context_view.horizontalHeader().setStyleSheet('border: 2px solid white; border-top-left-radius: 8px;\
+            border-top-right-radius: 8px;')  #
         self.hidden_contexts = []
     #     self.ui.context_view.horizontalHeader().setStyleSheet('background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,\
     #                             stop: 0 #E1E1E1, stop: 0.4 #DDDDDD,\
