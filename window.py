@@ -13,12 +13,6 @@ class Window(QtWidgets.QMainWindow):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
 
-        # #настрока toolbar
-        # load_rex_ru = QtWidgets.QAction(QtGui.QIcon('ru.jpg'), 'load_ru', self)
-        # load_rex_ru.triggered.connect(self.load)
-        # self.toolBar = self.addToolBar('Load_ru')
-        # self.toolBar.addAction(load_rex_ru)
-
         # создаем и устанавливаем модель в представление контекстов
         self.contexts_model = ContextsTableModel()
         self.ui.context_view.setModel(self.contexts_model)
@@ -140,8 +134,11 @@ class Window(QtWidgets.QMainWindow):
 
     # выбираем контекст соответсвующий выбранному контексту
     def choose_context(self, index):
+        # очищаем список скрытых контекстов
         self.showAllContexts()
+        # имя выбираемого контекста
         name = self.ui.message_view.model().get_message(index).get_parent().get_name()
+        # скрываем все строки, кроме той, которая соответствует выбранному контексту
         for n in range(0, self.ui.context_view.model().rowCount()):
             if self.ui.context_view.model().get_context(n).get_name() != name:
                 self.ui.context_view.hideRow(n)
@@ -153,12 +150,13 @@ class Window(QtWidgets.QMainWindow):
         index = self.ui.context_view.currentIndex()
         self.ui.context_view.edit(index)
 
-    # переименовывание контекста
+    # переименовывание исходного текста сообщения
     def rename_message(self):
         index = self.ui.message_view.currentIndex()
         self.ui.message_view.edit(index)
 
     # вставка нового элемента context в модель по индексу
+    # (вставляется после выбранной строки)
     def insert_context(self):
         index = self.ui.context_view.currentIndex().row()
         name, _ = QtWidgets.QInputDialog.getText(self, 'Новый контекст', 'Введите название нового контекста')
@@ -167,6 +165,7 @@ class Window(QtWidgets.QMainWindow):
             self.ui.statusbar.showMessage('Контекст успешно добавлен.')
 
     # вставка нового элемента message в модель по индексу
+    # (вставляется после выбранной строки)
     def insert_message(self):
         index = self.ui.message_view.currentIndex().row()
         name, _ = QtWidgets.QInputDialog.getText(self, 'Новое сообщение', 'Введите исходный текст нового сообщения')
@@ -208,16 +207,23 @@ class Window(QtWidgets.QMainWindow):
         name, _ = QtWidgets.QInputDialog.getText(self, 'Удаление элемента context', 'Введите название контекста')
         if _== True and name != '':
             index = self.ui.context_view.model().search_context(name)
-            self.ui.context_view.setCurrentIndex(index)
-            self.delete_context()
+            if index is not None:
+                self.ui.context_view.setCurrentIndex(index)
+                self.delete_context()
+            else:
+                self.ui.statusbar.showMessage('Элемент не найден')
 
     # удаление элемента message по исходному тексту
     def delete_message_by_name(self):
         name, _ = QtWidgets.QInputDialog.getText(self, 'Удаление элемента message', 'Введите название сообщения')
-        if _ == True and name != '':
+        if _ == True and name != '' and self.ui.message_view.model().isContextSetted() == True:
             index = self.ui.message_view.model().search_message(name)
-            self.ui.message_view.setCurrentIndex(index)
-            self.delete_message()
+            print(index)
+            if index is not None:
+                self.ui.message_view.setCurrentIndex(index)
+                self.delete_message()
+            else:
+                self.ui.statusbar.showMessage('Элемент не найден')
 
     # появление контекстного меню в представлениях
     def show_context_menu(self):
@@ -292,22 +298,22 @@ class Window(QtWidgets.QMainWindow):
                 if language == 'Оба языка':
                     filename, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Файл для сохранения английской версии', '/rex.ts',
                                                                      'Файл (*.ts)')
-                    if _ == True:
+                    if _  == 'Файл (*.ts)':
                          self.ui.context_view.model().save_data(filename, 'en')
                     filename, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Файл для сохранения русской версии',
                                                                         '/rex.ts', 'Файл (*.ts)')
-                    if _== True:
+                    if _  == 'Файл (*.ts)':
                         self.ui.context_view.model().save_data(filename, 'ru')
                 elif language == 'Русский':
                     filename, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Файл для сохранения русской версии',
                                                                         '/rex.ts', 'Файл (*.ts)')
-                    if _ == True:
+                    if _  == 'Файл (*.ts)':
                         self.ui.context_view.model().save_data(filename, 'ru')
                 else:
                     filename, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Файл для сохранения английской версии',
                                                                         '/rex.ts',
                                                                         'Файл (*.ts)')
-                    if _ == True:
+                    if _  == 'Файл (*.ts)':
                         self.ui.context_view.model().save_data(filename, 'en')
         except Exception:
             self.ui.statusbar.showMessage('Ошибка сохранения.')
@@ -391,12 +397,15 @@ class Window(QtWidgets.QMainWindow):
             self.ui.message_view.setRowHidden(n, False)
         self.hidden_messages = []
 
+    # изменение размеров виджетов при изменении размеров окна
     def resizeEvent(self, a0: QtGui.QResizeEvent):
         if a0.oldSize() != QtCore.QSize(-1,-1):
             width = a0.size().width() - a0.oldSize().width()
             height = a0.size().height() - a0.oldSize().height()
+            # размеры представлений
             w = self.ui.context_view.width()
             h = self.ui.context_view.height()
+            # изменение размеров представлений
             self.ui.context_view.resize(w + width/3, h + height)
             self.ui.message_view.setGeometry(w + width/3 + 50, 70, w + width/3, h + height)
             # кнопки для работы с представлениями
@@ -414,10 +423,9 @@ class Window(QtWidgets.QMainWindow):
             self.ui.btChange_source.setGeometry(w_boxes + width/3 - 120, h_boxes + height/3 - 40, 93, 28)
             self.ui.btChange_rus.setGeometry(w_boxes + width/3 - 120, h_boxes + height/3 - 40, 93, 28)
             self.ui.btChange_eng.setGeometry(w_boxes + width/3 - 120, h_boxes + height/3 - 40, 93, 28)
-
             self.ui.ru_transBox.setGeometry(2 * w + 100 + 2 * width / 3, 90 + h_boxes + height / 3, w_boxes + width / 3, h_boxes + height / 3)
             self.ui.en_transBox.setGeometry(2 * w + 100 + 2 * width / 3, 120 + h_boxes * 2 + height * 2 /3, w_boxes + width / 3, h_boxes + height / 3)
-            # поиск
+            # поиск сообщения
             self.ui.search_message.setGeometry(w + width/3 + 50, -1, 430, 51)
             self.ui.btLoad.setGeometry(a0.size().width() - 256, 20, 100, 30)
             self.ui.btSave.setGeometry(a0.size().width() - 136, 20, 100, 30)

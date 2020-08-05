@@ -6,26 +6,33 @@ from ContextItem import ContextItem, MessageItem
 class ContextsTableModel(QAbstractTableModel):
     def __init__(self):
         QAbstractTableModel.__init__(self)
+        # список контекстов в модели
         self.contexts = []
+        # информация о кодировке
         self.encoding_info = ''
+        # значения атрибута version тега TS для сохранения переводов в файл
         self.version = ''
 
-    # возвращаем число строк в данных в модели
+    # возвращаем число строк данных в модели
     def rowCount(self, parent=QModelIndex()):
         return len(self.contexts)
 
+    # возвращаем число столбцов данных в модели
     def columnCount(self, parent=QModelIndex()):
         return 2
 
+    # контекст по номеру строки
     def get_context(self, row):
         return self.contexts[row]
 
+    # контекст по имени
     def get_context_by_name(self, name):
         for c in self.contexts:
             if c.get_name() == name:
                 return c
         return None
 
+    # устанавка данных по заданному модельному индексу
     def setData(self, index, value, role=Qt.DisplayRole):
         # если элемент не редактируем, то изменения не вносятся
         if role != Qt.EditRole:
@@ -34,6 +41,7 @@ class ContextsTableModel(QAbstractTableModel):
         self.dataChanged.emit(index, index)
         return True
 
+    # метод для передачи представлениям и делегатам информации о данных модел
     def data(self, index, role):
         column = index.column()
         row = index.row()
@@ -52,6 +60,7 @@ class ContextsTableModel(QAbstractTableModel):
         else:
             return QVariant()
 
+    # загрузка из файла
     def load_data(self, filename):
         with open(filename, 'r', encoding='utf-8') as file:
             self.encoding_info = self.encoding_info + file.readline()
@@ -111,9 +120,11 @@ class ContextsTableModel(QAbstractTableModel):
             self.contexts.insert(n + shifting_contexts, context)
         self.endResetModel()
 
+    # метод, возвращающий индекс для элемента в модели, соответствуюей заданной строке и столбцу
     def index(self, row, column, parent=QModelIndex()):
         return self.createIndex(row, column)
 
+    # заголовки представления
     def headerData(self, section, Qt_Orientation, role=Qt.DisplayRole):
         if Qt_Orientation == Qt.Horizontal and role == Qt.DisplayRole:
             if section == 0:
@@ -130,6 +141,7 @@ class ContextsTableModel(QAbstractTableModel):
                 hide.append(n)
         return hide
 
+    # вставка контекста в конец списка
     def add_context(self, name):
         count = len(self.contexts)
         self.beginInsertRows(QModelIndex(), count, count)
@@ -137,30 +149,44 @@ class ContextsTableModel(QAbstractTableModel):
         self.contexts.append(ContextItem(name))
         self.endInsertRows()
 
+    # вставка контекста по индексу
     def insert_context(self, name, row):
         self.beginInsertRows(QModelIndex(), row, row)
         self.contexts.insert(row, ContextItem(name))
         self.endInsertRows()
 
+    # удаление контекста по индексу
     def delete_context(self, row):
         self.beginRemoveRows(QModelIndex(), row, row)
         self.contexts.pop(row)
         self.endRemoveRows()
 
+    # сброс контекстов модели
     def clean_model(self):
         self.beginResetModel()
         self.contexts = []
         self.endResetModel()
 
+    # поиск сообщения в контекстах
     def search_messages(self, string):
         return list(map(lambda x: x.search_messages(string), self.contexts))
 
+    #  возварщает индекс контекста, имя которого совпадает с заданной строкой
+    def search_context(self, string):
+        for n, context in enumerate(self.contexts):
+            if context.get_name() == string:
+                return self.index(n, 0)
+        return None
+
+    # сохранение в файл
     def save_data(self, filename, language):
+        # язык переводов
         if language.find('ru') == -1:
             mode = 'en_En'
         else:
             mode = 'ru_Ru'
         with open(filename, 'w', encoding='utf-8') as file:
+            # записываем в файл информацию о кодировке
             file.writelines(self.encoding_info)
             file.write('<TS language="{0}" version="{1}">\n'.format(mode, self.version))
             for context in self.contexts:
