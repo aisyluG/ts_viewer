@@ -64,7 +64,8 @@ class ContextsTableModel(QAbstractTableModel):
         language = root.attrib['language']
         self.version = root.attrib['version']
         # для каждого контекста в файле
-        shift = 0
+        # сдвиг контекстов, чтобы был правильный порядок
+        shifting_contexts = 0
         for n, c in enumerate(root):
             name = c.find('name')
             # если контекст не имеет имя, то называем его 'no name'
@@ -78,7 +79,9 @@ class ContextsTableModel(QAbstractTableModel):
                     context = ContextItem(name.text)
                 # иначе дополняем новыми сообщениями, если они есть
                 else:
-                    shift = shift + 1
+                    shifting_contexts = shifting_contexts + 1
+                    # сдвиг контекстов, чтобы был правильный порядок
+                    shifting_messages = 0
                     for n, mes in enumerate(c.findall('message')):
                         source = mes.find('source').text
                         translation = mes.find('translation').text
@@ -89,7 +92,9 @@ class ContextsTableModel(QAbstractTableModel):
                             message = MessageItem(context)
                             message.set_source(source)
                             # добавляем сообщение в контекст
-                            context.insert_message(n, message)
+                            context.insert_message(n + shifting_messages, message)
+                        else:
+                            shifting_messages = shifting_messages + 1
                         # устанавливаем перевод
                         message.set_translation(translation, language)
                     continue
@@ -103,7 +108,7 @@ class ContextsTableModel(QAbstractTableModel):
                 message.set_translation(translation, language)
                 # добавляем сообщение в контекст
                 context.add_message(message)
-            self.contexts.insert(n + shift, context)
+            self.contexts.insert(n + shifting_contexts, context)
         self.endResetModel()
 
     def index(self, row, column, parent=QModelIndex()):

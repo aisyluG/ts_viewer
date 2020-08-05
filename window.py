@@ -367,6 +367,40 @@ class Window(QtWidgets.QMainWindow):
             self.ui.message_view.setRowHidden(n, False)
         self.hidden_messages = []
 
+    def resizeEvent(self, a0: QtGui.QResizeEvent):
+        print(a0.size())
+        print(a0.oldSize())
+        if a0.oldSize() != QtCore.QSize(-1,-1):
+            width = a0.size().width() - a0.oldSize().width()
+            height = a0.size().height() - a0.oldSize().height()
+            w = self.ui.context_view.width()
+            h = self.ui.context_view.height()
+            self.ui.context_view.resize(w + width/3, h + height)
+            self.ui.message_view.setGeometry(w + width/3 + 50, 70, w + width/3, h + height)
+            # кнопки для работы с представлениями
+            self.ui.context_viewTools.setGeometry(w + width / 3, 70, 40, 170)
+            self.ui.message_viewTools.setGeometry(2 * w + 2 *width / 3 + 50, 70, 40, 170)
+            # окна редактирования сообщения
+            w_boxes = self.ui.source_editBox.width()
+            h_boxes = self.ui.source_editBox.height()
+            self.ui.source_editBox.setGeometry(2*w + 100 + 2 * width/3, 60, w_boxes + width/3, h_boxes + height/3)
+            w_editors = self.ui.sourceText.width()
+            h_editors = self.ui.sourceText.height()
+            self.ui.sourceText.resize(w_editors + width/3, h_editors + height / 3)
+            self.ui.ru_transText.resize(w_editors + width/3, h_editors + height / 3)
+            self.ui.en_transText.resize(w_editors + width/3, h_editors + height / 3)
+            self.ui.btChange_source.setGeometry(w_boxes + width/3 - 120, h_boxes + height/3 - 40, 93, 28)
+            self.ui.btChange_rus.setGeometry(w_boxes + width/3 - 120, h_boxes + height/3 - 40, 93, 28)
+            self.ui.btChange_eng.setGeometry(w_boxes + width/3 - 120, h_boxes + height/3 - 40, 93, 28)
+
+            self.ui.ru_transBox.setGeometry(2 * w + 100 + 2 * width / 3, 90 + h_boxes + height / 3, w_boxes + width / 3, h_boxes + height / 3)
+            self.ui.en_transBox.setGeometry(2 * w + 100 + 2 * width / 3, 120 + h_boxes * 2 + height * 2 /3, w_boxes + width / 3, h_boxes + height / 3)
+            # поиск
+            self.ui.search_message.setGeometry(w + width/3 + 50, -1, 430, 51)
+            self.ui.btLoad.setGeometry(a0.size().width() - 256, 20, 100, 30)
+            self.ui.btSave.setGeometry(a0.size().width() - 136, 20, 100, 30)
+            self.ui.line_2.resize(2 * w + 2 * width/3 + 101, 20)
+            self.ui.line.setGeometry(2 * w + 2 * width / 3 + 82, 60, 20, h + height + 10)
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
